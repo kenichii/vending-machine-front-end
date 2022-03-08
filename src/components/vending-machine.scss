@@ -1,0 +1,55 @@
+.vending-machine {
+  height: 100%;
+  align-items: center;
+  display: flex;
+}
+
+.summary {
+  justify-self: center;
+  width: 100%;
+
+  .selected-content {
+    max-width: 20% !important;
+
+    .price {
+      justify-content: center;
+    }
+  }
+
+  .item-content  {
+    display: flex;
+    justify-content: center;
+    min-height: 80%;
+    padding-bottom: 10px;
+
+    &.no-selected {
+      .content {
+        height: 100%;
+        display: flex;
+        align-items: center;
+      }
+    }
+  }
+
+  // .input-cash-content {
+  //   width: 20%;
+  // }
+
+  .my-cash, .input-cash-content, .process, .status {
+    margin: 10px;
+    width: 20%;
+  }
+
+  .actions {
+    display: flex;
+  }
+
+  .spinner-border{ 
+    height: 40px;
+    width: 40px;
+  }
+}
+
+.is-disabled {
+  background: #1e4ed87d !important;
+}
