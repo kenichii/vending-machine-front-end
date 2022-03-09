@@ -73,7 +73,7 @@ class VendingMachine extends React.PureComponent {
     let icash = document.getElementById('icash');
 
     icash.onkeydown = function(e) {
-      if(e.keyCode === 189 || e.keyCode === 190 || e.keyCode === 48) {
+      if(e.keyCode === 189 || e.keyCode === 190) {
         return false
       }
     }
@@ -106,7 +106,7 @@ class VendingMachine extends React.PureComponent {
   }
 
   handleChange(event, propName) {
-    this.setState({[propName]: event.target.value});
+    this.setState({[propName]: event.target.value.replace(/^0+/, '')});
   }
 
   handleCash(e, state) {
