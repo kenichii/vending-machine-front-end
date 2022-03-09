@@ -1,6 +1,10 @@
 import React, { Fragment } from "react";
 import * as api from "../utils/api" 
 import './vending-machine.scss'
+import Swal from 'sweetalert2'
+import withReactContent from 'sweetalert2-react-content'
+
+const MySwal = withReactContent(Swal)
 
 const Product = (item, addToCart, isView = false, myCash = null) => {
   let image = `/images/${item.name}.jpg`
@@ -69,7 +73,7 @@ class VendingMachine extends React.PureComponent {
     let icash = document.getElementById('icash');
 
     icash.onkeydown = function(e) {
-      if(e.keyCode === 189 || e.keyCode === 190) {
+      if(e.keyCode === 189 || e.keyCode === 190 || e.keyCode === 48) {
         return false
       }
     }
@@ -108,22 +112,79 @@ class VendingMachine extends React.PureComponent {
   handleCash(e, state) {
     e.preventDefault();
     
+    document.getElementById('icash').value = '';
+    
     let { inputCash, selectedCurrency} = state;
     let formatCash = inputCash;
-    if(selectedCurrency === '1'){
+    if(selectedCurrency === 'c'){
       formatCash = "."+inputCash;
     }
 
    this.setState((state) =>  ({ myCash: (parseFloat(state.myCash) + parseFloat(formatCash)).toFixed(2), inputCash: null}));
   }
 
+  proceedPayment(state) {
+    let change = state.myCash - state.selectedItem.price > 0;
+    let item = `Your ${state.selectedItem.name} have been served. ${change ? `Here is your $${state.myCash - state.selectedItem.price} change.` : ''}`
+
+    let timerInterval;
+
+    Swal.fire({
+      //title: 'Auto close alert!',
+      html: 'Processing your order.',
+      timer: 2000,
+      timerProgressBar: true,
+      didOpen: () => {
+        Swal.showLoading()
+        timerInterval = setInterval(() => {
+        }, 100)
+      },
+      willClose: () => {
+        clearInterval(timerInterval)
+      }
+    }).then(async (result) => {
+      /* Read more about handling dismissals below */
+
+      let payload = {
+        item: state.selectedItem,
+        cash: parseFloat(state.myCash).toFixed(2)
+      }
+
+      let res = await api.proceedPayment({body: JSON.stringify(payload)});
+
+      console.log(res, "payload")
+
+      if (result.dismiss === Swal.DismissReason.timer) {
+        Swal.fire({
+          icon: 'success',
+          title: `Your ${state.selectedItem.name} have been served`,
+          html: parseFloat(res.data.result).toFixed(2) > 0 ? `Here is your $${res.data.result} change.` : '',
+        });
+
+        await this.getListOfItems();
+      }
+    })
+  }
+
+  cancelTransaction(event) {
+    event.preventDefault(event);
+
+    this.setState({
+      selectedItem: {}, 
+      myCash: 0
+    })
+    MySwal.fire({
+      icon: 'success',
+      title: "Succsesfully cancelled your transaction. Your wallet has been refunded.",
+      showConfirmButton: false,
+      timer: 2000
+    })
+  }
+
   render() {
     let { listOfData, selectedItem, inputCash, selectedCurrency, myCash } = this.state;
 
-    let enableAddCash = parseFloat(inputCash) > 0 && selectedCurrency !== "Currency";
-
-    // console.log(parseFloat(inputCash) > -1, "parseFloat(inputCash)")
-    // console.log(selectedCurrency !== "")
+    let disableAddCash = !inputCash || selectedCurrency === 'Currency';
 
     return (
       <Fragment>
@@ -138,83 +199,125 @@ class VendingMachine extends React.PureComponent {
             </div>
             <div className="summary">
               <div className={`item-content ${selectedItem.price ? 'current-selected' : 'no-selected'}`}>
-                { Product(selectedItem, this.addToCart, true)}
-              </div>
               <div className="actions">
-                <div className="input-cash-content">
-                  <div className="mb-4 flex">
-                    <input className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
-                    id="icash" type="number" placeholder="Cash" min="0.01" defaultValue={inputCash} onChange={(e) => this.handleChange(e, "inputCash")}/>
-                    {/* <input class="w-25 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
-                    id="currency" type="string" placeholder="Currency" /> */}
-                    <div className="w-25">
-                      <select className="form-select appearance-none
-                        block
-                        px-3
-                        py-1.5
-                        text-base
-                        font-normal
-                        text-gray-700
-                        bg-white bg-clip-padding bg-no-repeat
-                        border border-solid border-gray-300
-                        rounded
-                        transition
-                        ease-in-out
-                        m-0
-                        focus:text-gray-700 focus:bg-white focus:border-blue-600 focus:outline-none" 
-                        onChange={(e) => this.handleChange(e, "selectedCurrency")} 
-                        defaultValue={selectedCurrency}
-                        aria-label="Default select example">
-                          <option selected>Currency</option>
-                          <option defaultValue="1">c</option>
-                          <option defaultValue="2">$</option>
-                      </select>
+                <div className="input-cash-content shadow-md">
+                  <div>
+                    <div className="mb-4 flex">
+                      <input className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
+                      id="icash" type="number" placeholder="Cash" min="1" onChange={(e) => this.handleChange(e, "inputCash")}/>
+                      {/* <input class="w-25 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" 
+                      id="currency" type="string" placeholder="Currency" /> */}
+                      <div className="w-52">
+                        <select className="form-select appearance-none
+                          w-full
+                          block
+                          px-3
+                          py-1.5
+                          text-base
+                          font-normal
+                          text-gray-700
+                          bg-white bg-clip-padding bg-no-repeat
+                          border border-solid border-gray-300
+                          rounded
+                          transition
+                          ease-in-out
+                          m-0
+                          focus:text-gray-700 focus:bg-white focus:border-blue-600 focus:outline-none" 
+                          onChange={(e) => this.handleChange(e, "selectedCurrency")} 
+                          defaultValue={selectedCurrency}
+                          aria-label="Default select example">
+                            <option selected>Select Currency</option>
+                            <option defaultValue="1">c</option>
+                            <option defaultValue="2">$</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="flex">
+                      <button className={`mx-2 
+                      w-full 
+                      text-white 
+                      bg-blue-700 
+                      hover:bg-blue-800 
+                      focus:ring-4 
+                      focus:ring-blue-300 
+                      font-medium 
+                      rounded-lg 
+                      text-sm px-5 
+                      py-2.5 
+                      text-center 
+                      dark:bg-blue-600 
+                      dark:hover:bg-blue-700 
+                      dark:focus:ring-blue-800
+                      ${disableAddCash ? 'is-disabled' : ''}
+                      `}
+                      onClick={(e) => this.handleCash(e, this.state)}
+                      disabled={disableAddCash}>INPUT CASH</button>
+
+                      <button className={`mx-2
+                       w-full 
+                       text-white
+                      bg-blue-700 
+                      hover:bg-blue-800 
+                      focus:ring-4 
+                      focus:ring-blue-300 
+                      font-medium 
+                      rounded-lg 
+                      text-sm px-5 
+                      py-2.5 
+                      text-center 
+                      dark:bg-blue-600 
+                      dark:hover:bg-blue-700 
+                      dark:focus:ring-blue-800
+                      ${myCash ? '' : 'is-disabled'}`}
+                      disabled={!myCash}
+                      onClick={(event) => this.cancelTransaction(event)}
+                      >CANCEL</button>
+
+                      <button className={`w-full
+                        text-white 
+                        bg-blue-700 
+                        hover:bg-blue-800 
+                        focus:ring-4 
+                        focus:ring-blue-300 
+                        font-medium 
+                        rounded-lg 
+                        text-sm 
+                        px-5 
+                        py-2.5 
+                        text-center 
+                        dark:bg-blue-600 
+                        dark:hover:bg-blue-700 
+                        dark:focus:ring-blue-800
+                        ${selectedItem.price ? '': 'is-disabled'}
+                        `}
+                        disabled={!selectedItem.price}
+                        onClick={() => this.proceedPayment(this.state)}
+                          >
+                            PROCESS
+                          </button>
+                      </div>
                     </div>
                   </div>
-                  <button className="w-full text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
-                  onClick={(e) => this.handleCash(e, this.state)}
-                  disabled={!enableAddCash}>INPUT CASH</button>
+                  <div className="my-wallet">
+                    MY WALLET: {myCash ? `$${myCash}` : '0.00'}
+                  </div>
                 </div>
-                <div className="my-cash">
+                {/* <div className="my-cash shadow-md">
                   <span>
                     My Cash: {myCash ? `$${myCash}` : '0.00'}
                   </span>
                   <button className="w-full text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
                   >CANCEL</button>
                 </div>
-                <div className="process">
+                <div className="process shadow-md">
                   <span>
                       My Change: {myCash ? `$${myCash}` : '0.00'}
                     </span>
-                  <button className={`w-full
-                   text-white 
-                   bg-blue-700 
-                   hover:bg-blue-800 
-                   focus:ring-4 
-                   focus:ring-blue-300 
-                   font-medium 
-                   rounded-lg 
-                   text-sm 
-                   px-5 
-                   py-2.5 
-                   text-center 
-                   dark:bg-blue-600 
-                   dark:hover:bg-blue-700 
-                   dark:focus:ring-blue-800
-                   ${selectedItem.price ? '': 'is-disabled'}
-                   `}
-                   disabled={!selectedItem.price}
-                    >
-                      {this.state.isLoading ? <div class="flex justify-center items-center space-x-2">
-                        <div class="spinner-border animate-spin inline-block w-8 h-8 border-4 rounded-full text-blue-600" role="status">
-                          <span class="visually-hidden">Loading...</span>
-                        </div>
-                      </div> : 'PROCESS'}
-                      
-                    </button>
-                </div>
-                
+                 
+              </div> */}
+                { Product(selectedItem, this.addToCart, true)}
               </div>
+              
             </div>
           </div>
         </div>

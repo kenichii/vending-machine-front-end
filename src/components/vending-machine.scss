@@ -36,13 +36,17 @@
   // }
 
   .my-cash, .input-cash-content, .process, .status {
-    margin: 10px;
-    width: 20%;
+    margin: 30px 10px 30px 10px;
+    padding: 15px;
   }
 
-  .actions {
-    display: flex;
+  .actions, .selected-content {
+    width: 50%;
   }
+
+  // .actions {
+  //   display: flex;
+  // }
 
   .spinner-border{ 
     height: 40px;
