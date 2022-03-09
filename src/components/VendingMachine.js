@@ -113,19 +113,22 @@ class VendingMachine extends React.PureComponent {
     e.preventDefault();
     
     document.getElementById('icash').value = '';
-    
+
     let { inputCash, selectedCurrency} = state;
     let formatCash = inputCash;
     if(selectedCurrency === 'c'){
       formatCash = "."+inputCash;
     }
 
-   this.setState((state) =>  ({ myCash: (parseFloat(state.myCash) + parseFloat(formatCash)).toFixed(2), inputCash: null}));
+   this.setState((state) =>  ({
+     myCash: (parseFloat(state.myCash) + parseFloat(formatCash)).toFixed(2), 
+     inputCash: null,
+  }));
   }
 
-  proceedPayment(state) {
-    let change = state.myCash - state.selectedItem.price > 0;
-    let item = `Your ${state.selectedItem.name} have been served. ${change ? `Here is your $${state.myCash - state.selectedItem.price} change.` : ''}`
+  proceedPayment(e) {
+    // let change = this.state.myCash - this.state.selectedItem.price > 0;
+    // let item = `Your ${state.selectedItem.name} have been served. ${change ? `Here is your $${state.myCash - state.selectedItem.price} change.` : ''}`
 
     let timerInterval;
 
@@ -146,22 +149,26 @@ class VendingMachine extends React.PureComponent {
       /* Read more about handling dismissals below */
 
       let payload = {
-        item: state.selectedItem,
-        cash: parseFloat(state.myCash).toFixed(2)
+        item: this.state.selectedItem,
+        cash: parseFloat(this.state.myCash).toFixed(2)
       }
 
       let res = await api.proceedPayment({body: JSON.stringify(payload)});
 
-      console.log(res, "payload")
-
       if (result.dismiss === Swal.DismissReason.timer) {
         Swal.fire({
           icon: 'success',
-          title: `Your ${state.selectedItem.name} have been served`,
+          title: `Your ${this.state.selectedItem.name} have been served`,
           html: parseFloat(res.data.result).toFixed(2) > 0 ? `Here is your $${res.data.result} change.` : '',
         });
 
         await this.getListOfItems();
+
+        this.setState({
+          selectedItem: {}, 
+          myCash: 0
+        })
+
       }
     })
   }
@@ -291,7 +298,7 @@ class VendingMachine extends React.PureComponent {
                         ${selectedItem.price ? '': 'is-disabled'}
                         `}
                         disabled={!selectedItem.price}
-                        onClick={() => this.proceedPayment(this.state)}
+                        onClick={(e) => this.proceedPayment(e)}
                           >
                             PROCESS
                           </button>
